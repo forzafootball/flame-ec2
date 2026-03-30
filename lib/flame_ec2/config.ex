@@ -16,6 +16,8 @@ defmodule FlameEC2.Config do
     :subnet_id,
     :security_group_id,
     :instance_type,
+    :spot,
+    :spot_max_price,
     :iam_instance_profile,
     :key_name,
     :aws_region,
@@ -40,6 +42,8 @@ defmodule FlameEC2.Config do
              :subnet_id,
              :security_group_id,
              :instance_type,
+             :spot,
+             :spot_max_price,
              :iam_instance_profile,
              :key_name,
              :aws_region,
@@ -58,6 +62,8 @@ defmodule FlameEC2.Config do
             subnet_id: nil,
             security_group_id: nil,
             instance_type: nil,
+            spot: false,
+            spot_max_price: nil,
             iam_instance_profile: nil,
             key_name: nil,
             aws_region: nil,
@@ -98,6 +104,7 @@ defmodule FlameEC2.Config do
     |> validate_instance_creation_details!()
     |> validate_instance_subnet!()
     |> validate_instance_security_group!()
+    |> validate_spot_options!()
   end
 
   defp maybe_auto_configure!(%Config{auto_configure: false} = config) do
@@ -209,6 +216,14 @@ defmodule FlameEC2.Config do
   end
 
   defp validate_instance_security_group!(%Config{} = config) do
+    config
+  end
+
+  defp validate_spot_options!(%Config{spot: false, spot_max_price: spot_max_price}) when not is_nil(spot_max_price) do
+    raise ArgumentError, "You must enable spot to set spot_max_price for the FlameEC2 backend"
+  end
+
+  defp validate_spot_options!(%Config{} = config) do
     config
   end
 end

@@ -78,6 +78,46 @@ defmodule FlameEC2.EC2ApiTest do
     assert not Map.has_key?(parsed, "ImageId")
   end
 
+  test "includes spot instance market options when enabled" do
+    state =
+      FlameEC2.QuickConfigs.simple_valid_config()
+      |> Keyword.put(:spot, true)
+      |> Keyword.put(:spot_max_price, "0.05")
+      |> FlameEC2.BackendState.new([])
+
+    parsed = FlameEC2.EC2Api.build_params_from_state(state)
+
+    assert parsed["InstanceMarketOptions.MarketType"] == "spot"
+    assert parsed["InstanceMarketOptions.SpotOptions.MaxPrice"] == "0.05"
+    assert parsed["InstanceMarketOptions.SpotOptions.SpotInstanceType"] == "one-time"
+    assert parsed["InstanceMarketOptions.SpotOptions.InstanceInterruptionBehavior"] == "terminate"
+  end
+
+  test "does not include spot instance market options when disabled" do
+    state = FlameEC2.BackendState.new(FlameEC2.QuickConfigs.simple_valid_config(), [])
+
+    parsed = FlameEC2.EC2Api.build_params_from_state(state)
+
+    assert not Map.has_key?(parsed, "InstanceMarketOptions.MarketType")
+    assert not Map.has_key?(parsed, "InstanceMarketOptions.SpotOptions.MaxPrice")
+    assert not Map.has_key?(parsed, "InstanceMarketOptions.SpotOptions.SpotInstanceType")
+    assert not Map.has_key?(parsed, "InstanceMarketOptions.SpotOptions.InstanceInterruptionBehavior")
+  end
+
+  test "omits spot max price when not provided" do
+    state =
+      FlameEC2.QuickConfigs.simple_valid_config()
+      |> Keyword.put(:spot, true)
+      |> FlameEC2.BackendState.new([])
+
+    parsed = FlameEC2.EC2Api.build_params_from_state(state)
+
+    assert parsed["InstanceMarketOptions.MarketType"] == "spot"
+    assert parsed["InstanceMarketOptions.SpotOptions.SpotInstanceType"] == "one-time"
+    assert parsed["InstanceMarketOptions.SpotOptions.InstanceInterruptionBehavior"] == "terminate"
+    assert not Map.has_key?(parsed, "InstanceMarketOptions.SpotOptions.MaxPrice")
+  end
+
   test "successfully launches an instance", context do
     state =
       FlameEC2.BackendState.new(
