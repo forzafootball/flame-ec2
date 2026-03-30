@@ -108,7 +108,24 @@ defmodule FlameEC2.EC2Api do
       "UserData" => Base.encode64(start_script)
     }
 
-    Map.merge(base_params, creation_details_params(config))
+    base_params
+    |> Map.merge(creation_details_params(config))
+    |> maybe_put_spot_options(config)
+  end
+
+  defp maybe_put_spot_options(params, %Config{spot: true} = config) do
+    Map.put(params, "InstanceMarketOptions", %{
+      "MarketType" => "spot",
+      "SpotOptions" => %{
+        "MaxPrice" => config.spot_max_price,
+        "SpotInstanceType" => "one-time",
+        "InstanceInterruptionBehavior" => "terminate"
+      }
+    })
+  end
+
+  defp maybe_put_spot_options(params, %Config{}) do
+    params
   end
 
   defp creation_details_params(%Config{launch_template_id: launch_template_id} = config)

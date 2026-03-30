@@ -50,6 +50,26 @@ defmodule FlameEC2.ConfigTest do
     assert config.env == env
   end
 
+  test "spot configuration options" do
+    config =
+      FlameEC2.QuickConfigs.simple_valid_config()
+      |> Keyword.put(:spot, true)
+      |> Keyword.put(:spot_max_price, "0.05")
+      |> FlameEC2.Config.new([])
+
+    assert config.spot == true
+    assert config.spot_max_price == "0.05"
+  end
+
+  test "spot_max_price requires spot to be enabled" do
+    assert_raise ArgumentError,
+                 "You must enable spot to set spot_max_price for the FlameEC2 backend",
+                 fn ->
+                   Keyword.put(FlameEC2.QuickConfigs.simple_valid_config(), :spot_max_price, "0.05")
+                   |> FlameEC2.Config.new([])
+                 end
+  end
+
   describe "instance creation details" do
     test "must have image id or launch template" do
       assert_raise ArgumentError,

@@ -49,6 +49,23 @@ Based on the above recommendations, an example configuration that may work well 
 }
 ```
 
+## Spot Instances
+
+You can configure `FlameEC2` to request EC2 Spot Instances instead of on-demand instances by enabling the `:spot` option. If you want to cap the hourly price in USD, set `:spot_max_price`; when it is `nil`, EC2 will use the current Spot price.
+
+```elixir
+config :flame, FlameEC2,
+  app: :my_app,
+  s3_bundle_url: "s3://code-bucket/code.tar.gz",
+  image_id: "ami-123",
+  subnet_id: "subnet-123",
+  security_group_id: "sg-123",
+  spot: true,
+  spot_max_price: "0.05"
+```
+
+`FlameEC2` always requests one-time Spot Instances with termination on interruption, which matches FLAME's instance lifecycle management.
+
 ## Debugging Issues
 
 The `FlameEC2` backend works by setting up an EC2 UserData script which will initialize the runner instance with a systemd service that is running the release bundle that you specify. If the runner is not able to start, there may be an issue during the start script which causes the whole process to fail. If there is a problem, you can see the logs of the start script by using the systemd journal as shown here:
