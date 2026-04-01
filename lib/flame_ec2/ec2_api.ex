@@ -29,7 +29,10 @@ defmodule FlameEC2.EC2Api do
           url: uri,
           method: :post,
           form: params,
-          aws_sigv4: Map.put_new(credentials, :service, "ec2")
+          aws_sigv4:
+            credentials
+            |> Map.put_new(:service, "ec2")
+            |> rename_token_key()
         ]
         |> Req.new()
         |> Req.request()
@@ -40,6 +43,13 @@ defmodule FlameEC2.EC2Api do
         |> Map.fetch!("item")
     end
   end
+
+  # Req 0.5.x renamed :token to :security_token in aws_sigv4
+  defp rename_token_key(%{token: token} = creds) do
+    creds |> Map.delete(:token) |> Map.put(:security_token, token)
+  end
+
+  defp rename_token_key(creds), do: creds
 
   def build_params_from_state(%BackendState{} = state) do
     state.config
