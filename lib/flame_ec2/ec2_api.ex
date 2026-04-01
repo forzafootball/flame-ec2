@@ -25,16 +25,21 @@ defmodule FlameEC2.EC2Api do
         raise "No AWS credentials found in env or in credentials cache"
 
       %{} ->
-        [
-          url: uri,
-          method: :post,
-          form: params,
-          aws_sigv4:
-            credentials
-            |> Map.put_new(:service, "ec2")
-            |> rename_token_key()
-        ]
-        |> Req.new()
+        {token, sigv4_creds} = Map.pop(credentials, :token)
+
+        req =
+          Req.new(
+            url: uri,
+            method: :post,
+            form: params,
+            aws_sigv4: Map.put_new(sigv4_creds, :service, "ec2")
+          )
+
+        # Req 0.5.x aws_sigv4 doesn't support session tokens;
+        # add X-Amz-Security-Token header manually for IAM role credentials
+        req = if token, do: Req.Request.put_header(req, "x-amz-security-token", token), else: req
+
+        req
         |> Req.request()
         |> raise_or_response!()
         |> Map.fetch!(:body)
@@ -43,13 +48,6 @@ defmodule FlameEC2.EC2Api do
         |> Map.fetch!("item")
     end
   end
-
-  # Req 0.5.x renamed :token to :security_token in aws_sigv4
-  defp rename_token_key(%{token: token} = creds) do
-    creds |> Map.delete(:token) |> Map.put(:security_token, token)
-  end
-
-  defp rename_token_key(creds), do: creds
 
   def build_params_from_state(%BackendState{} = state) do
     state.config
