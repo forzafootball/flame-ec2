@@ -25,6 +25,7 @@ defmodule FlameEC2.Templates do
           | {:aws_region, String.t()}
           | {:s3_bundle_url, String.t()}
           | {:s3_bundle_compressed?, boolean()}
+          | {:setup_commands, String.t() | nil}
   @spec start_script([start_script_assign()]) :: String.t()
   def start_script(assigns) do
     start_script_template(assigns)

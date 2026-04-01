@@ -81,7 +81,8 @@ defmodule FlameEC2.EC2Api do
         env: env,
         aws_region: config.aws_region,
         s3_bundle_url: config.s3_bundle_url,
-        s3_bundle_compressed?: config.s3_bundle_compressed?
+        s3_bundle_compressed?: config.s3_bundle_compressed?,
+        setup_commands: config.setup_commands
       )
 
     base_params = %{

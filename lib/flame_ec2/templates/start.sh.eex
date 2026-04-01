@@ -150,6 +150,11 @@ then
     exit 1
 fi
 
+<%= if @setup_commands do %>
+log "Running setup commands..."
+<%= @setup_commands %>
+<% end %>
+
 chmod 755 "${APP_DIR}" || {
     log "Failed to set permissions on ${APP_DIR}"
     exit 1
