@@ -159,6 +159,7 @@ defmodule FlameEC2.EC2Api do
     base_params
     |> Map.merge(creation_details_params(config))
     |> maybe_put_spot_options(config)
+    |> maybe_put_root_volume(config)
   end
 
   defp maybe_put_spot_options(params, %Config{spot: true} = config) do
@@ -173,6 +174,23 @@ defmodule FlameEC2.EC2Api do
   end
 
   defp maybe_put_spot_options(params, %Config{}) do
+    params
+  end
+
+  defp maybe_put_root_volume(params, %Config{root_volume_size: size}) when is_integer(size) do
+    Map.put(params, "BlockDeviceMapping", [
+      %{
+        "DeviceName" => "/dev/sda1",
+        "Ebs" => %{
+          "VolumeSize" => size,
+          "VolumeType" => "gp3",
+          "DeleteOnTermination" => true
+        }
+      }
+    ])
+  end
+
+  defp maybe_put_root_volume(params, %Config{}) do
     params
   end
 
