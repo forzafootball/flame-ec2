@@ -145,9 +145,7 @@ defmodule FlameEC2.EC2Api do
           "DeleteOnTermination" => true,
           "DeviceIndex" => 0,
           "SubnetId" => config.subnet_id,
-          "SecurityGroupId" => [
-            config.security_group_id
-          ]
+          "SecurityGroupId" => config.security_group_ids
         }
       ],
       "InstanceType" => config.instance_type,

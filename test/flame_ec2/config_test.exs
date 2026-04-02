@@ -18,7 +18,7 @@ defmodule FlameEC2.ConfigTest do
     assert config.s3_bundle_url == "s3://code-bucket/code.tar.gz"
     assert config.s3_bundle_compressed? == true
     assert config.subnet_id == "subnet-123"
-    assert config.security_group_id == "sg-123"
+    assert config.security_group_ids == ["sg-123"]
     assert config.image_id == "ami-123"
     assert config.instance_type == "t3.nano"
     assert config.launch_template_version == "$Default"
@@ -99,7 +99,7 @@ defmodule FlameEC2.ConfigTest do
   end
 
   describe "raises on missing must specify keys" do
-    must_specify_keys = [:app, :s3_bundle_url, :subnet_id, :security_group_id]
+    must_specify_keys = [:app, :s3_bundle_url, :subnet_id, :security_group_ids]
 
     for key <- must_specify_keys do
       test "no #{key} is invalid" do
@@ -127,7 +127,7 @@ defmodule FlameEC2.ConfigTest do
 
       assert config.image_id == context[:ami_id]
       assert config.subnet_id == context[:subnet_id]
-      assert config.security_group_id == context[:security_group_id]
+      assert config.security_group_ids == [context[:security_group_id]]
       assert config.instance_type == context[:instance_type]
       assert config.local_ip == context[:local_ipv4]
       assert config.aws_region == "us-east-1"

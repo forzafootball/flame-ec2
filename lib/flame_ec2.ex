@@ -112,7 +112,7 @@ defmodule FlameEC2 do
 
   * `:subnet_id` - The subnet ID for the attached network interface. This is required in order to properly communicate with the instance.
 
-  * `:security_group_id` - The security group ID for the attached network interface. This is required in order to properly communicate with the instance.
+  * `:security_group_ids` - The security group IDs for the attached network interface. Accepts a list of SG IDs, or a single string. When `auto_configure` is enabled, this is automatically read from the parent instance's metadata. This is required in order to properly communicate with the instance.
 
   ### Optional Configurations
 

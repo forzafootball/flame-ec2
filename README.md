@@ -59,7 +59,7 @@ config :flame, FlameEC2,
   s3_bundle_url: "s3://code-bucket/code.tar.gz",
   image_id: "ami-123",
   subnet_id: "subnet-123",
-  security_group_id: "sg-123",
+  security_group_ids: ["sg-123"],
   spot: true,
   spot_max_price: "0.05"
 ```

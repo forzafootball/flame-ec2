@@ -14,7 +14,7 @@ defmodule FlameEC2.Config do
     :launch_template_id,
     :launch_template_version,
     :subnet_id,
-    :security_group_id,
+    :security_group_ids,
     :instance_type,
     :fallback_instance_types,
     :fallback_subnet_ids,
@@ -43,7 +43,7 @@ defmodule FlameEC2.Config do
              :launch_template_id,
              :launch_template_version,
              :subnet_id,
-             :security_group_id,
+             :security_group_ids,
              :instance_type,
              :fallback_instance_types,
              :fallback_subnet_ids,
@@ -65,7 +65,7 @@ defmodule FlameEC2.Config do
             launch_template_id: nil,
             launch_template_version: nil,
             subnet_id: nil,
-            security_group_id: nil,
+            security_group_ids: nil,
             instance_type: nil,
             fallback_instance_types: [],
             fallback_subnet_ids: [],
@@ -149,7 +149,7 @@ defmodule FlameEC2.Config do
     auto_configured = %Config{
       image_id: metadata["ami-id"],
       subnet_id: network_interface["subnet-id"],
-      security_group_id: network_interface["security-group-ids"],
+      security_group_ids: parse_security_group_ids(network_interface["security-group-ids"]),
       instance_type: metadata["instance-type"] || "t3.nano",
       iam_instance_profile: iam_instance_profile,
       local_ip: metadata["local-ipv4"],
@@ -219,12 +219,24 @@ defmodule FlameEC2.Config do
     config
   end
 
-  defp validate_instance_security_group!(%Config{security_group_id: nil}) do
-    raise ArgumentError, "You must specify a security group ID for the FlameEC2 backend"
+  defp validate_instance_security_group!(%Config{security_group_ids: nil}) do
+    raise ArgumentError, "You must specify security group IDs for the FlameEC2 backend"
   end
 
-  defp validate_instance_security_group!(%Config{} = config) do
+  defp validate_instance_security_group!(%Config{security_group_ids: ids} = config) when is_list(ids) do
     config
+  end
+
+  defp validate_instance_security_group!(%Config{security_group_ids: id} = config) when is_binary(id) do
+    %Config{config | security_group_ids: parse_security_group_ids(id)}
+  end
+
+  defp parse_security_group_ids(nil), do: nil
+
+  defp parse_security_group_ids(ids) when is_list(ids), do: ids
+
+  defp parse_security_group_ids(ids) when is_binary(ids) do
+    ids |> String.split("\n", trim: true) |> Enum.map(&String.trim/1)
   end
 
   defp validate_spot_options!(%Config{spot: false, spot_max_price: spot_max_price}) when not is_nil(spot_max_price) do
