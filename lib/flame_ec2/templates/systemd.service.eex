@@ -23,7 +23,7 @@ ExecStop=/home/ubuntu/<%= @app %>/release/bin/<%= @app %> stop
 Environment=LANG=en_US.utf8
 EnvironmentFile=/home/ubuntu/<%= @app %>/env
 LimitNOFILE=65535
-UMask=0027
+UMask=0022
 SyslogIdentifier=<%= @app %>
 Restart=no
 ExecStopPost=/usr/bin/systemctl poweroff
