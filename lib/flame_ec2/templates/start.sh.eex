@@ -179,13 +179,6 @@ chmod 755 "${APP_DIR}" || {
     exit 1
 }
 
-# Allow Vector to read erlang.log files (owned by ubuntu:ubuntu, mode 0640)
-if id vector >/dev/null 2>&1; then
-    usermod -aG ubuntu vector
-    systemctl restart vector || true
-    log "Added vector user to ubuntu group and restarted vector"
-fi
-
 systemctl daemon-reload || {
     log "Failed to reload systemd"
     exit 1
