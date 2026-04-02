@@ -52,7 +52,7 @@ defmodule FlameEC2.MixProject do
     [
       {:flame, "~> 0.5.0"},
       {:aws_credentials, "~> 0.3.2"},
-      {:req, "~> 0.5.7"},
+      {:req, "~> 0.5.0"},
       ## Testing and Development Dependencies
       {:styler, "~> 1.2", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.36.1", only: :dev, runtime: false},
