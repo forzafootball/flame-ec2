@@ -3,23 +3,25 @@ Description=<%= @app %> service
 After=local-fs.target network.target
 
 [Service]
-Type=simple
-WorkingDirectory=/srv/<%= @app %>/release
+Type=forking
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/<%= @app %>/release
 
 <%= if assigns[:custom_start_command] do %>
 ExecStart=<%= @custom_start_command %>
 <% else %>
-ExecStart=/srv/<%= @app %>/release/bin/<%= @app %> start
+ExecStart=/home/ubuntu/<%= @app %>/release/bin/<%= @app %> daemon
 <% end %>
 
 <%= if assigns[:custom_stop_command] do %>
 ExecStop=<%= @custom_stop_command %>
 <% else %>
-ExecStop=/srv/<%= @app %>/release/bin/<%= @app %> stop
+ExecStop=/home/ubuntu/<%= @app %>/release/bin/<%= @app %> stop
 <% end %>
 
 Environment=LANG=en_US.utf8
-EnvironmentFile=/srv/<%= @app %>/env
+EnvironmentFile=/home/ubuntu/<%= @app %>/env
 LimitNOFILE=65535
 UMask=0027
 SyslogIdentifier=<%= @app %>

@@ -100,14 +100,18 @@ fi
 aws configure set default.region <%= @aws_region %>
 
 S3_URL=<%= @s3_bundle_url %>
-APP_DIR="/srv/<%= @app %>"
+# Match the dicon deployment layout: /home/ubuntu/{app}/{version}/ with current symlink
+APP_DIR="/home/ubuntu/<%= @app %>"
 SERVICE_NAME=<%= @app %>
 RELEASE_DIR="${APP_DIR}/release"
 
-mkdir -p "${APP_DIR}" "${RELEASE_DIR}" || {
+mkdir -p "${APP_DIR}" "${RELEASE_DIR}" "${APP_DIR}/log" || {
     log "Failed to create required directories"
     exit 1
 }
+
+# Ensure ubuntu owns everything (we run as root during bootstrap)
+chown -R ubuntu:ubuntu "${APP_DIR}"
 
 cd "${APP_DIR}" || {
     log "Failed to change to ${APP_DIR}"
@@ -134,6 +138,9 @@ aws s3 sync ${S3_URL} . --quiet || {
 }
 <% end %>
 
+# Create current symlink (matches dicon layout, Vector expects logs at $APP_DIR/log/)
+ln -sfn ${RELEASE_DIR} ${APP_DIR}/current
+
 if [ ! -d "${RELEASE_DIR}" ] || [ ! -x "${RELEASE_DIR}/bin/<%= @app %>" ]; then
     log "Release directory or executable not found after extraction"
     exit 1
@@ -149,6 +156,8 @@ then
     log "Failed to create env file"
     exit 1
 fi
+
+chown -R ubuntu:ubuntu "${APP_DIR}"
 
 if ! cat > /etc/systemd/system/${SERVICE_NAME}.service << EOF
 <%= @systemd_service %>
