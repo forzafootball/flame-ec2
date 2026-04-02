@@ -11,7 +11,19 @@ defmodule FlameEC2.EC2Api do
   require Logger
 
   def run_instances!(%BackendState{} = state) do
-    params = build_params_from_state(state)
+    instance_types = [state.config.instance_type | state.config.fallback_instance_types || []]
+    run_instances_with_fallback!(state, instance_types)
+  end
+
+  defp run_instances_with_fallback!(_state, []) do
+    raise "No instance capacity available for any configured instance type"
+  end
+
+  defp run_instances_with_fallback!(state, [instance_type | remaining]) do
+    params =
+      state
+      |> build_params_from_state()
+      |> Map.put("InstanceType", instance_type)
 
     uri =
       state.config.ec2_service_endpoint
@@ -25,21 +37,46 @@ defmodule FlameEC2.EC2Api do
         raise "No AWS credentials found in env or in credentials cache"
 
       %{} ->
-        [
-          url: uri,
-          method: :post,
-          form: params,
-          aws_sigv4: Map.put_new(credentials, :service, "ec2")
-        ]
-        |> Req.new()
-        |> Req.request()
-        |> raise_or_response!()
-        |> Map.fetch!(:body)
-        |> Map.fetch!("RunInstancesResponse")
-        |> Map.fetch!("instancesSet")
-        |> Map.fetch!("item")
+        result =
+          [
+            url: uri,
+            method: :post,
+            form: params,
+            aws_sigv4: Map.put_new(credentials, :service, "ec2")
+          ]
+          |> Req.new()
+          |> Req.request()
+
+        case result do
+          {:ok, %Req.Response{status: status, body: body}} when status >= 300 ->
+            if insufficient_capacity?(body) and remaining != [] do
+              Logger.warning("No capacity for #{instance_type}, trying #{hd(remaining)}")
+              run_instances_with_fallback!(state, remaining)
+            else
+              Logger.error("Failed to create instance with status #{status} and errors: #{inspect(body)}")
+              raise "Bad status #{status} with errors: #{inspect(body)}"
+            end
+
+          {:ok, %Req.Response{} = resp} ->
+            resp = if xml?(resp), do: update_in(resp.body, &XML.decode!/1), else: resp
+
+            resp.body
+            |> Map.fetch!("RunInstancesResponse")
+            |> Map.fetch!("instancesSet")
+            |> Map.fetch!("item")
+
+          {:error, exception} ->
+            Logger.error("Failed to create instance with exception: #{inspect(exception)}")
+            raise "Failed to create instance: #{inspect(exception)}"
+        end
     end
   end
+
+  defp insufficient_capacity?(body) when is_binary(body) do
+    String.contains?(body, "InsufficientInstanceCapacity")
+  end
+
+  defp insufficient_capacity?(_), do: false
 
   def build_params_from_state(%BackendState{} = state) do
     state.config
