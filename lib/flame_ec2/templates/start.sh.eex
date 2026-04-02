@@ -2,6 +2,10 @@
 
 set -e
 
+# Terminate instance on any bootstrap failure to prevent orphaned instances
+# (InstanceInitiatedShutdownBehavior=terminate ensures AWS cleans up)
+trap 'log "Bootstrap failed, shutting down to prevent orphan"; shutdown -h now' ERR
+
 log() {
     logger -s -t "flame_ec2_init" "$1"
 }
@@ -71,7 +75,12 @@ install_aws_cli() {
     fi
 
     log "Installing AWS CLI..."
-    curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        aarch64|arm64) CLI_ARCH="aarch64" ;;
+        *)             CLI_ARCH="x86_64" ;;
+    esac
+    curl -s "https://awscli.amazonaws.com/awscli-exe-linux-${CLI_ARCH}.zip" -o "awscliv2.zip"
     unzip -q awscliv2.zip
     ./aws/install --update >/dev/null 2>&1
     rm -rf aws awscliv2.zip
@@ -151,8 +160,10 @@ then
 fi
 
 <%= if @setup_commands do %>
-log "Running setup commands..."
+log "Running setup commands (non-fatal)..."
+set +e
 <%= @setup_commands %>
+set -e
 <% end %>
 
 chmod 755 "${APP_DIR}" || {
