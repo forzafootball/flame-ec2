@@ -11,25 +11,31 @@ defmodule FlameEC2.EC2Api do
   require Logger
 
   def run_instances!(%BackendState{} = state) do
-    instance_types = [state.config.instance_type | state.config.fallback_instance_types || []]
-    run_instances_with_fallback!(state, instance_types)
+    combinations = instance_type_subnet_combinations(state.config)
+    run_instances_with_fallback!(state, combinations)
+  end
+
+  defp instance_type_subnet_combinations(%Config{} = config) do
+    instance_types = [config.instance_type | config.fallback_instance_types || []]
+    subnet_ids = [config.subnet_id | config.fallback_subnet_ids || []]
+
+    for instance_type <- instance_types,
+        subnet_id <- subnet_ids,
+        do: {instance_type, subnet_id}
   end
 
   defp run_instances_with_fallback!(_state, []) do
-    raise "No instance capacity available for any configured instance type"
+    raise "No instance capacity available for any configured instance type and subnet combination"
   end
 
-  defp run_instances_with_fallback!(state, [instance_type | remaining]) do
+  defp run_instances_with_fallback!(state, [{instance_type, subnet_id} | remaining]) do
     params =
       state
       |> build_params_from_state()
       |> Map.put("InstanceType", instance_type)
+      |> Map.put("NetworkInterface.1.SubnetId", subnet_id)
 
-    uri =
-      state.config.ec2_service_endpoint
-      |> URI.new!()
-      |> URI.to_string()
-
+    uri = URI.to_string(URI.new!(state.config.ec2_service_endpoint))
     credentials = :aws_credentials.get_credentials()
 
     case credentials do
@@ -50,7 +56,13 @@ defmodule FlameEC2.EC2Api do
         case result do
           {:ok, %Req.Response{status: status, body: body}} when status >= 300 ->
             if insufficient_capacity?(body) and remaining != [] do
-              Logger.warning("No capacity for #{instance_type}, trying #{hd(remaining)}")
+              {next_type, next_subnet} = hd(remaining)
+
+              Logger.warning(
+                "No capacity for #{instance_type} in #{subnet_id}, " <>
+                  "trying #{next_type} in #{next_subnet}"
+              )
+
               run_instances_with_fallback!(state, remaining)
             else
               Logger.error("Failed to create instance with status #{status} and errors: #{inspect(body)}")
