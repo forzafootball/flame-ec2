@@ -1,10 +1,9 @@
 #!/bin/bash
 
-set -e
+set -ex
 
-# Terminate instance on any bootstrap failure to prevent orphaned instances
-# (InstanceInitiatedShutdownBehavior=terminate ensures AWS cleans up)
-trap 'log "Bootstrap failed, shutting down to prevent orphan"; shutdown -h now' ERR
+# TODO: re-enable after debugging
+# trap 'log "Bootstrap failed, shutting down to prevent orphan"; shutdown -h now' ERR
 
 log() {
     logger -s -t "flame_ec2_init" "$1"
