@@ -469,7 +469,11 @@ defmodule FlameEC2.EC2Api do
   defp parse_reservation(_), do: []
 
   defp parse_instance(item) do
-    %{instance_id: Map.get(item, "instanceId"), private_ip: Map.get(item, "privateIpAddress")}
+    %{
+      instance_id: Map.get(item, "instanceId"),
+      private_ip: Map.get(item, "privateIpAddress"),
+      launch_time: Map.get(item, "launchTime")
+    }
   end
 
   @doc """
