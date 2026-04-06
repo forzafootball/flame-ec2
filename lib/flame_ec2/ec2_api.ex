@@ -185,6 +185,8 @@ defmodule FlameEC2.EC2Api do
       case get_in(resp, ["CreateFleetResponse", "fleetInstanceSet", "item"]) do
         %{"instanceIds" => %{"item" => %{"instanceId" => id}}} -> id
         %{"instanceIds" => %{"item" => [%{"instanceId" => id} | _]}} -> id
+        %{"instanceIds" => %{"item" => id}} when is_binary(id) -> id
+        %{"instanceIds" => %{"item" => [id | _]}} when is_binary(id) -> id
         nil ->
           errors = get_in(resp, ["CreateFleetResponse", "errorSet", "item"])
           raise "CreateFleet failed to launch any instances: #{inspect(errors || resp)}"
