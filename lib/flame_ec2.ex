@@ -261,7 +261,7 @@ defmodule FlameEC2 do
 
   @impl true
   def handle_info(msg, %BackendState{} = state) do
-    Utils.log(state.config, "Missed message sent to FlameEC2 Process #{self()}: #{inspect(msg)}")
+    Utils.log(state.config, "Missed message sent to FlameEC2 Process #{inspect(self())}: #{inspect(msg)}")
     {:noreply, state}
   end
 end
