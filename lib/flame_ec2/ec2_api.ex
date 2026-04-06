@@ -232,6 +232,109 @@ defmodule FlameEC2.EC2Api do
     raise exception
   end
 
+  @doc """
+  Describe running instances with a specific tag value.
+  Returns {:ok, [%{instance_id: id, private_ip: ip}]} or {:error, reason}.
+  """
+  def describe_instances_by_tag(tag_key, tag_value) do
+    credentials = :aws_credentials.get_credentials()
+
+    case credentials do
+      :undefined -> {:error, :no_credentials}
+      %{} ->
+        # Get region from credentials or default
+        region = Map.get(credentials, :region, "eu-west-1")
+        uri = "https://ec2.#{region}.amazonaws.com/"
+
+        params = %{
+          "Action" => "DescribeInstances",
+          "Version" => "2016-11-15",
+          "Filter.1.Name" => "tag:#{tag_key}",
+          "Filter.1.Value.1" => tag_value,
+          "Filter.2.Name" => "instance-state-name",
+          "Filter.2.Value.1" => "running"
+        }
+
+        result =
+          [url: uri, method: :post, form: params, aws_sigv4: Map.put_new(credentials, :service, "ec2")]
+          |> Req.new()
+          |> Req.request()
+
+        case result do
+          {:ok, %Req.Response{status: 200, body: body}} ->
+            resp = if String.starts_with?(body, "<?xml"), do: XML.decode!(body), else: body
+            instances = parse_describe_instances(resp)
+            {:ok, instances}
+
+          {:ok, %Req.Response{status: status, body: body}} ->
+            {:error, "DescribeInstances failed: #{status} #{inspect(body)}"}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+    end
+  end
+
+  defp parse_describe_instances(resp) do
+    case get_in(resp, ["DescribeInstancesResponse", "reservationSet"]) do
+      nil -> []
+      %{"item" => items} when is_list(items) ->
+        Enum.flat_map(items, &parse_reservation/1)
+      %{"item" => item} when is_map(item) ->
+        parse_reservation(item)
+      _ -> []
+    end
+  end
+
+  defp parse_reservation(%{"instancesSet" => %{"item" => items}}) when is_list(items) do
+    Enum.map(items, &parse_instance/1)
+  end
+  defp parse_reservation(%{"instancesSet" => %{"item" => item}}) when is_map(item) do
+    [parse_instance(item)]
+  end
+  defp parse_reservation(_), do: []
+
+  defp parse_instance(item) do
+    %{
+      instance_id: Map.get(item, "instanceId"),
+      private_ip: Map.get(item, "privateIpAddress")
+    }
+  end
+
+  @doc """
+  Terminate EC2 instances by instance IDs.
+  """
+  def terminate_instances(instance_ids) when is_list(instance_ids) do
+    credentials = :aws_credentials.get_credentials()
+
+    case credentials do
+      :undefined -> {:error, :no_credentials}
+      %{} ->
+        region = Map.get(credentials, :region, "eu-west-1")
+        uri = "https://ec2.#{region}.amazonaws.com/"
+
+        id_params =
+          instance_ids
+          |> Enum.with_index(1)
+          |> Map.new(fn {id, i} -> {"InstanceId.#{i}", id} end)
+
+        params = Map.merge(%{"Action" => "TerminateInstances", "Version" => "2016-11-15"}, id_params)
+
+        result =
+          [url: uri, method: :post, form: params, aws_sigv4: Map.put_new(credentials, :service, "ec2")]
+          |> Req.new()
+          |> Req.request()
+
+        case result do
+          {:ok, %Req.Response{status: 200}} -> :ok
+          {:ok, %Req.Response{status: status, body: body}} ->
+            Logger.error("TerminateInstances failed: #{status} #{inspect(body)}")
+            {:error, "TerminateInstances failed: #{status}"}
+          {:error, reason} -> {:error, reason}
+        end
+    end
+  end
+
   # Adapted from https://github.com/livebook-dev/livebook/blob/v0.14.5/lib/livebook/file_system/s3/client.ex
   defp xml?(response) do
     guess_xml? = String.starts_with?(response.body, "<?xml")

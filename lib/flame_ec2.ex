@@ -209,9 +209,8 @@ defmodule FlameEC2 do
   def system_shutdown do
     # When creating the instance, we set InstanceInitiatedShutdownBehavior to `terminate`.
     # This is used to ensure that on instance shutdown, we terminate the instance completely.
-    # Using this policy, we can set up our child node to run our app using systemd,
-    # and add a post stop hook to completely shut down our node.
-    # This will let us simplify not leaving orphaned nodes alive.
+    require Logger
+    Logger.warning("FlameEC2.system_shutdown called — stopping BEAM, EC2 instance will terminate")
     System.stop()
   end
 
