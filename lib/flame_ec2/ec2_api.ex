@@ -106,6 +106,10 @@ defmodule FlameEC2.EC2Api do
           "ResourceType" => "instance",
           "Tag" => [
             %{
+              "Key" => "Name",
+              "Value" => "#{state.config.app}-flame-worker"
+            },
+            %{
               "Key" => "FLAME_PARENT_IP",
               "Value" => state.config.local_ip
             },
