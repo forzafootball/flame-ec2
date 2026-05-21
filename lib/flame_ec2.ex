@@ -210,7 +210,24 @@ defmodule FlameEC2 do
     # When creating the instance, we set InstanceInitiatedShutdownBehavior to `terminate`.
     # This is used to ensure that on instance shutdown, we terminate the instance completely.
     require Logger
-    Logger.warning("FlameEC2.system_shutdown called — stopping BEAM, EC2 instance will terminate")
+
+    # `system_shutdown` runs from `FLAME.Terminator.terminate/2` while the BEAM
+    # is tearing down — the logger's IO device may already be closed. A logging
+    # failure there (`:erlang.display_string` raising `:badarg`/`:eio`) must not
+    # abort the shutdown: `System.stop/0` is the load-bearing call. Without this
+    # guard the raised `:badarg` propagates out of `terminate/2` and cascades to
+    # the parent's in-flight `FLAME.call`, killing it uncatchably.
+    _ =
+      try do
+        Logger.warning(
+          "FlameEC2.system_shutdown called — stopping BEAM, EC2 instance will terminate"
+        )
+      rescue
+        _ -> :ok
+      catch
+        _, _ -> :ok
+      end
+
     System.stop()
   end
 
